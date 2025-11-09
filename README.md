@@ -454,6 +454,65 @@ for batch in dataloader:
     scaler.update()
 ```
 
+## Evidence Binding Task (REDSM5)
+
+This implementation includes specialized support for **Evidence Binding** using the redsm5 dataset.
+
+### What is Evidence Binding?
+
+Evidence binding involves identifying and extracting key evidence sentences that support or refute claims in medical/scientific texts:
+- **Input**: Claims and contextual information
+- **Task**: Identify relevant evidence sentences
+- **Output**: Binary classification + evidence extraction
+
+### Quick Start for Evidence Binding
+
+1. **Prepare your data**:
+   - Place `annotations.csv` in `data/redsm5/`
+   - Ensure it has `status` and `sentence` columns
+   - See `data/redsm5/README.md` for format details
+
+2. **Preprocess the data**:
+   ```bash
+   python scripts/prepare_redsm5.py \
+     --input data/redsm5/annotations.csv \
+     --output data/redsm5 \
+     --status-filter 1
+   ```
+
+3. **Train the model**:
+   ```bash
+   python scripts/train_evidence_binding.py \
+     --data_dir data/redsm5 \
+     --model gpt2 \
+     --num_epochs 5 \
+     --output_dir outputs/evidence_binding
+   ```
+
+4. **Run inference**:
+   ```bash
+   python scripts/inference_dhrd.py \
+     --model_path outputs/evidence_binding \
+     --input_file data/redsm5/test_annotations.csv \
+     --output_file results/evidence_predictions.json
+   ```
+
+### Data Format
+
+Your `annotations.csv` should have:
+- `status`: Filter flag (1 = use this row, 0 = skip)
+- `sentence`: **Evidence ground truth** (the key evidence text)
+- Other columns: Automatically used as input context
+
+Example:
+```csv
+id,status,claim,context,sentence
+1,1,"Patient has diabetes","Blood glucose 180 mg/dL","Blood glucose 180 mg/dL"
+2,0,"Patient has flu","General malaise",""
+```
+
+See `data/redsm5/README.md` for comprehensive documentation.
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
