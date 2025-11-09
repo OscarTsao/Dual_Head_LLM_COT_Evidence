@@ -27,9 +27,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from Project.SubProject.models.dhrd_model import DHRDModel
 from Project.SubProject.data.evidence_binding_dataset import (
     EvidenceBindingDataset,
-    EvidenceBindingDataModule
+    EvidenceBindingDataModule,
+    create_dhrd_dataloader
 )
-from Project.SubProject.data.dhrd_dataset import create_dhrd_dataloader
 from Project.SubProject.engine.dhrd_trainer import (
     DHRDTrainer,
     create_optimizer,

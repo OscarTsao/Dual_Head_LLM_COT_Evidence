@@ -403,3 +403,32 @@ def prepare_redsm5_data(
     logger.info(f"  Test: {len(test_df)} samples -> {output_dir / 'test_annotations.csv'}")
 
     return train_df, val_df, test_df
+
+
+def create_dhrd_dataloader(
+    dataset: EvidenceBindingDataset,
+    batch_size: int = 8,
+    shuffle: bool = True,
+    num_workers: int = 0,
+    **kwargs
+) -> torch.utils.data.DataLoader:
+    """
+    Create a DataLoader for DHRD training.
+
+    Args:
+        dataset: EvidenceBindingDataset instance
+        batch_size: Batch size
+        shuffle: Whether to shuffle data
+        num_workers: Number of worker processes
+        **kwargs: Additional arguments for DataLoader
+
+    Returns:
+        DataLoader instance
+    """
+    return torch.utils.data.DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=num_workers,
+        **kwargs
+    )

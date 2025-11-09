@@ -1,44 +1,44 @@
-# Dual-Head Reasoning Distillation (DHRD)
+# Evidence Binding with DHRD (REDSM5 Dataset)
 
 [![arXiv](https://img.shields.io/badge/arXiv-2509.21487-b31b1b.svg)](https://arxiv.org/abs/2509.21487)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.2+-ee4c2c.svg)](https://pytorch.org/)
 
-Implementation of **"Dual-Head Reasoning Distillation: Improving Classifier Accuracy with Train-Time-Only Reasoning"** (arXiv:2509.21487).
+Implementation of **Evidence Binding** using **Dual-Head Reasoning Distillation (DHRD)** for the REDSM5 dataset.
 
 ## Overview
 
-Dual-Head Reasoning Distillation (DHRD) is a novel training method for decoder-only language models that improves classification accuracy while maintaining fast inference speeds. The key innovation is using two heads during training:
+This repository implements evidence binding for medical/scientific text using the DHRD architecture from the paper *"Dual-Head Reasoning Distillation: Improving Classifier Accuracy with Train-Time-Only Reasoning"* (arXiv:2509.21487).
 
-1. **Classification Head** (used in training and inference): A pooled classifier that produces the final predictions
-2. **Reasoning Head** (used only in training): An LM head that learns from teacher-generated Chain-of-Thought rationales
+### What is Evidence Binding?
 
-### Key Features
+**Evidence binding** identifies and extracts key evidence sentences that support or refute claims in medical/scientific texts:
+- **Input**: Claims and contextual information from medical cases
+- **Task**: Identify whether relevant evidence exists and extract it
+- **Output**: Binary classification (has_evidence: 0/1) + evidence sentence extraction
 
-- **Improved Accuracy**: Achieves 0.65-5.47% relative gains over pooled baselines on SuperGLUE tasks
-- **Fast Inference**: 96-142× faster than Chain-of-Thought decoding at inference time
-- **Train-Time-Only Reasoning**: Reasoning head is disabled during inference for maximum throughput
-- **Simple Architecture**: Only two lightweight heads added to decoder-only transformers
+### DHRD Architecture
 
-### How It Works
+DHRD uses a dual-head approach for improved accuracy:
+
+1. **Classification Head** (training + inference): Pooled classifier for evidence detection
+2. **Reasoning Head** (training only): LM head that learns from evidence rationales
+
+**Key Benefits**:
+- **Improved Accuracy**: 0.65-5.47% gains over baselines (especially on reasoning tasks)
+- **Fast Inference**: 96-142× faster than Chain-of-Thought decoding
+- **Train-Time-Only Reasoning**: Reasoning head disabled at inference for speed
 
 ```
 Training:
-Input → Transformer → Classification Head → Classification Loss
-                   ↓
-                   Reasoning Head (with rationales) → LM Loss
+Medical Text → Transformer → Classification Head → Has Evidence? (0/1)
+                           ↓
+                           Reasoning Head → Learn from Evidence Rationale
 
 Inference (Fast):
-Input → Transformer → Classification Head → Predictions
-                   (Reasoning Head Disabled)
+Medical Text → Transformer → Classification Head → Has Evidence? (0/1)
+                           (Reasoning Head Disabled)
 ```
-
-The combined loss is:
-```
-L = (1 - λ) * L_classification + λ * L_reasoning
-```
-
-where λ is the reasoning weight (default: 0.5).
 
 ## Installation
 
@@ -71,81 +71,78 @@ pip install -e '.[dev]'
 pip install -e '.[api]'
 ```
 
-## Quick Start
+## Quick Start (REDSM5 Evidence Binding)
 
 ### 1. Prepare Your Data
 
-Your training data should be in JSON or JSONL format with the following structure:
+Place your `annotations.csv` file in `data/redsm5/`:
 
-```json
-[
-  {
-    "text": "Your input text here",
-    "label": 0,
-    "rationale": "Step-by-step reasoning from teacher model..."
-  },
-  ...
-]
+```csv
+id,status,claim,context,sentence
+1,1,"Patient has diabetes","Patient presents with elevated blood glucose levels of 180 mg/dL","Patient presents with elevated blood glucose levels of 180 mg/dL"
+2,0,"Patient has flu","General malaise",""
 ```
 
-### 2. Generate Rationales (Optional)
+**Required columns**:
+- `status`: Filter flag (1 = use this row, 0 = skip)
+- `sentence`: **Evidence ground truth** (the key evidence text)
+- Other columns: Automatically used as input context
 
-If you don't have rationales, use a teacher model to generate them:
+See `data/redsm5/README.md` for detailed format specifications and `data/redsm5/example_annotations.csv` for examples.
+
+### 2. Preprocess the Data
+
+Split your annotations into train/val/test sets:
 
 ```bash
-# Using a local model
-python scripts/generate_rationales.py \
-  --input data/train.json \
-  --output data/train_with_rationales.json \
-  --generator local \
-  --model meta-llama/Llama-2-7b-chat-hf
-
-# Using OpenAI API
-python scripts/generate_rationales.py \
-  --input data/train.json \
-  --output data/train_with_rationales.json \
-  --generator openai \
-  --model gpt-4
+python scripts/prepare_redsm5.py \
+  --input data/redsm5/annotations.csv \
+  --output data/redsm5 \
+  --status-filter 1 \
+  --train-ratio 0.7 \
+  --val-ratio 0.15 \
+  --test-ratio 0.15 \
+  --show-stats
 ```
 
-### 3. Train DHRD Model
+This creates:
+- `train_annotations.csv` (70% of data)
+- `val_annotations.csv` (15% of data)
+- `test_annotations.csv` (15% of data)
+
+### 3. Train Evidence Binding Model
 
 ```bash
-# Basic training
-python scripts/train_dhrd.py \
+python scripts/train_evidence_binding.py \
+  --data_dir data/redsm5 \
   --model gpt2 \
-  --num_labels 3 \
-  --train_data data/train_with_rationales.json \
-  --val_data data/val.json \
-  --num_epochs 3 \
+  --evidence_column sentence \
+  --num_epochs 5 \
   --batch_size 8 \
   --learning_rate 2e-5 \
-  --output_dir outputs/dhrd
-
-# With MLflow logging
-python scripts/train_dhrd.py \
-  --model facebook/opt-125m \
-  --num_labels 2 \
-  --train_data data/train_with_rationales.json \
-  --val_data data/val.json \
-  --use_mlflow \
-  --mlflow_experiment dhrd_experiment
+  --output_dir outputs/evidence_binding \
+  --use_mlflow
 ```
+
+**Model options**:
+- `--model`: gpt2, facebook/opt-125m, facebook/opt-350m, etc.
+- `--reasoning_weight`: 0.5 (default) - balance between classification and reasoning
+- `--max_length`: 512 (default) - max input sequence length
 
 ### 4. Run Inference
 
 ```bash
-# Single text inference
+# Inference on test set
 python scripts/inference_dhrd.py \
-  --model_path outputs/dhrd \
-  --input "Your text to classify here"
-
-# Batch inference
-python scripts/inference_dhrd.py \
-  --model_path outputs/dhrd \
-  --input_file data/test.json \
-  --output_file results/predictions.json \
+  --model_path outputs/evidence_binding \
+  --input_file data/redsm5/test_annotations.csv \
+  --output_file results/evidence_predictions.json \
   --batch_size 32
+
+# Single case inference
+python scripts/inference_dhrd.py \
+  --model_path outputs/evidence_binding \
+  --input "Patient presents with fever and WBC count of 15,000"
 ```
 
 ## Architecture Details
@@ -251,30 +248,7 @@ DHRD works with any decoder-only transformer model from Hugging Face:
 - **GPT-J**: `EleutherAI/gpt-j-6B`
 - **LLaMA**: `meta-llama/Llama-2-7b-hf`, etc.
 
-## SuperGLUE Tasks
-
-Specialized dataset class for SuperGLUE tasks:
-
-```python
-from Project.SubProject.data.dhrd_dataset import SuperGLUEDataset
-
-dataset = SuperGLUEDataset(
-    task_name="cb",  # or "rte", "copa", "boolq", "wic", "multirc"
-    data="data/cb_train.json",
-    tokenizer=tokenizer,
-    include_rationales=True
-)
-```
-
-Supported tasks:
-- **CB** (CommitmentBank)
-- **RTE** (Recognizing Textual Entailment)
-- **COPA** (Choice of Plausible Alternatives)
-- **BoolQ** (Boolean Questions)
-- **WiC** (Words in Context)
-- **MultiRC** (Multi-Sentence Reading Comprehension)
-
-## Project Structure
+## Project Structure (REDSM5 Evidence Binding)
 
 ```
 Dual_Head_LLM_COT_Evidence/
@@ -282,31 +256,32 @@ Dual_Head_LLM_COT_Evidence/
 │   └── Project/
 │       └── SubProject/
 │           ├── models/
-│           │   ├── dhrd_model.py          # Main DHRD model
-│           │   └── model.py               # Legacy model
+│           │   └── dhrd_model.py                # DHRD architecture
 │           ├── data/
-│           │   ├── dhrd_dataset.py        # Dataset classes
-│           │   └── dataset.py             # Legacy dataset
+│           │   └── evidence_binding_dataset.py  # REDSM5 dataset loader
 │           ├── engine/
-│           │   ├── dhrd_trainer.py        # Training engine
-│           │   ├── train_engine.py        # Legacy trainer
-│           │   └── eval_engine.py         # Legacy evaluator
+│           │   └── dhrd_trainer.py              # Training engine
 │           └── utils/
-│               ├── log.py                 # Logging utilities
-│               ├── seed.py                # Seed setting
-│               └── mlflow_utils.py        # MLflow helpers
+│               ├── log.py                       # Logging utilities
+│               ├── seed.py                      # Seed setting
+│               └── mlflow_utils.py              # MLflow helpers
 ├── scripts/
-│   ├── train_dhrd.py                      # Training script
-│   ├── inference_dhrd.py                  # Inference script
-│   └── generate_rationales.py             # Rationale generation
+│   ├── prepare_redsm5.py                        # Data preprocessing
+│   ├── train_evidence_binding.py                # Training script
+│   ├── inference_dhrd.py                        # Inference script
+│   └── generate_rationales.py                   # Rationale generation (optional)
 ├── configs/
-│   ├── dhrd_config.yaml                   # Main config
-│   └── example_small.yaml                 # Small-scale config
-├── data/                                   # Data directory
-├── outputs/                                # Model outputs
-├── mlruns/                                 # MLflow tracking
-├── pyproject.toml                          # Project metadata
-└── README.md                               # This file
+│   └── evidence_binding_config.yaml             # Evidence binding config
+├── data/
+│   └── redsm5/                                  # REDSM5 dataset
+│       ├── README.md                            # Data format guide
+│       ├── example_annotations.csv              # Example data
+│       └── annotations.csv                      # Your data (place here)
+├── outputs/                                     # Model outputs
+├── mlruns/                                      # MLflow tracking
+├── pyproject.toml                               # Project metadata
+├── LICENSE                                      # MIT License
+└── README.md                                    # This file
 ```
 
 ## Performance
@@ -453,65 +428,6 @@ for batch in dataloader:
     scaler.step(optimizer)
     scaler.update()
 ```
-
-## Evidence Binding Task (REDSM5)
-
-This implementation includes specialized support for **Evidence Binding** using the redsm5 dataset.
-
-### What is Evidence Binding?
-
-Evidence binding involves identifying and extracting key evidence sentences that support or refute claims in medical/scientific texts:
-- **Input**: Claims and contextual information
-- **Task**: Identify relevant evidence sentences
-- **Output**: Binary classification + evidence extraction
-
-### Quick Start for Evidence Binding
-
-1. **Prepare your data**:
-   - Place `annotations.csv` in `data/redsm5/`
-   - Ensure it has `status` and `sentence` columns
-   - See `data/redsm5/README.md` for format details
-
-2. **Preprocess the data**:
-   ```bash
-   python scripts/prepare_redsm5.py \
-     --input data/redsm5/annotations.csv \
-     --output data/redsm5 \
-     --status-filter 1
-   ```
-
-3. **Train the model**:
-   ```bash
-   python scripts/train_evidence_binding.py \
-     --data_dir data/redsm5 \
-     --model gpt2 \
-     --num_epochs 5 \
-     --output_dir outputs/evidence_binding
-   ```
-
-4. **Run inference**:
-   ```bash
-   python scripts/inference_dhrd.py \
-     --model_path outputs/evidence_binding \
-     --input_file data/redsm5/test_annotations.csv \
-     --output_file results/evidence_predictions.json
-   ```
-
-### Data Format
-
-Your `annotations.csv` should have:
-- `status`: Filter flag (1 = use this row, 0 = skip)
-- `sentence`: **Evidence ground truth** (the key evidence text)
-- Other columns: Automatically used as input context
-
-Example:
-```csv
-id,status,claim,context,sentence
-1,1,"Patient has diabetes","Blood glucose 180 mg/dL","Blood glucose 180 mg/dL"
-2,0,"Patient has flu","General malaise",""
-```
-
-See `data/redsm5/README.md` for comprehensive documentation.
 
 ## License
 
