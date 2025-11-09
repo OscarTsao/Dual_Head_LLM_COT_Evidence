@@ -1,0 +1,62 @@
+# Configuration for DHRD (Dual-Head Reasoning Distillation) Training
+
+# Model configuration
+model:
+  backbone: "gpt2"  # Options: gpt2, facebook/opt-125m, facebook/opt-350m, etc.
+  num_labels: 3  # Number of classification labels
+  reasoning_weight: 0.5  # Weight for reasoning loss (lambda)
+  pooling_method: "last"  # Options: last, mean
+  classification_dropout: 0.1
+
+# Data configuration
+data:
+  train_path: "data/train_with_rationales.json"
+  val_path: "data/val.json"
+  test_path: "data/test.json"
+  max_length: 512  # Maximum sequence length for input
+  max_rationale_length: 1024  # Maximum length for input+rationale
+  text_column: "text"
+  label_column: "label"
+  rationale_column: "rationale"
+  include_rationales: true
+
+# Training configuration
+training:
+  num_epochs: 3
+  batch_size: 8
+  gradient_accumulation_steps: 1
+  learning_rate: 2.0e-5
+  weight_decay: 0.01
+  warmup_ratio: 0.1
+  max_grad_norm: 1.0
+  seed: 42
+
+# Optimizer configuration
+optimizer:
+  type: "adamw"
+  adam_epsilon: 1.0e-8
+  betas: [0.9, 0.999]
+
+# Scheduler configuration
+scheduler:
+  type: "linear"  # Options: linear, cosine
+  warmup_ratio: 0.1
+
+# Logging configuration
+logging:
+  log_interval: 10  # Steps between logging
+  eval_interval: 100  # Steps between evaluation
+  save_interval: 500  # Steps between checkpoints
+  output_dir: "outputs/dhrd"
+  use_mlflow: true
+  mlflow_experiment: "dhrd_training"
+
+# Device configuration
+device:
+  use_cuda: true
+  device: "cuda"  # Options: cuda, cpu, cuda:0, etc.
+
+# SuperGLUE specific configuration (optional)
+superglue:
+  task: "cb"  # Options: cb, rte, copa, boolq, wic, multirc
+  metric: "accuracy"  # Primary metric for evaluation
