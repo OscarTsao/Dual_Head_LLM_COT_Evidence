@@ -1,0 +1,17 @@
+[
+  {
+    "text": "The movie was absolutely fantastic! I loved every minute of it.",
+    "label": 1,
+    "rationale": "Let's analyze this step by step:\n1. The text uses strong positive language like 'absolutely fantastic' and 'loved'\n2. The exclamation mark shows enthusiasm\n3. The phrase 'every minute of it' emphasizes complete satisfaction\n4. No negative indicators are present\nTherefore, this is clearly a positive sentiment."
+  },
+  {
+    "text": "I was disappointed by the poor quality and bad service.",
+    "label": 0,
+    "rationale": "Let's think through this carefully:\n1. The word 'disappointed' is a negative emotion word\n2. 'Poor quality' and 'bad service' are explicit complaints\n3. There are no positive aspects mentioned\n4. The overall tone is clearly negative\nThis is a negative sentiment."
+  },
+  {
+    "text": "The product is okay, nothing special but it works.",
+    "label": 2,
+    "rationale": "Analyzing this statement:\n1. 'Okay' is a neutral, middle-ground word\n2. 'Nothing special' tempers expectations without being negative\n3. 'It works' confirms basic functionality\n4. No strong positive or negative language is used\nThis represents a neutral sentiment."
+  }
+]
